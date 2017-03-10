@@ -46,9 +46,9 @@ for port in $ports; do
         awk '$3~/^(myself,)?master$/{print$1}' | \
             while read line; do
                 redis-cli -p $port cluster nodes 2>/dev/null | \
-                    awk '$4=="'$line'"&&$8=="connected"' | \
-                        grep -c . | \
-                            grep "^$slaves_per_master\$" >/dev/null && \
+                    awk -vl=$line -vs=$slaves_per_master \
+                        '{if ($4==l && $8=="connected") {n+=1}}
+                            END{if (n!=s) {exit(1)}}' && \
                                 balance=$e_ok || {balance=$e_warning && break}
             done
 done
