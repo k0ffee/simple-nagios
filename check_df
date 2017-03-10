@@ -1,0 +1,39 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- check space reported by "df"
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/sbin:/usr/bin:/bin
+set -e
+
+warning=$1
+critical=$2
+
+[ -z $warning ]  && echo 'UNKNOWN' && exit 3
+[ -z $critical ] && echo 'UNKNOWN' && exit 3
+[ $warning -gt $critical ] && echo 'UNKNOWN' && exit 3
+
+status=0
+df -t zfs 2>/dev/null | \
+    awk -vw=$warning -vc=$critical \
+        'BEGIN {max=0}
+         { p = $5*1 }
+         { if (p>=w)  { wstate=1 } }
+         { if (p>=c)  { cstate=1 } }
+         { if (p>max) { max=p } }
+         END {
+             if (NR==0) {
+                 print "UNKNOWN no data"; exit (3)
+             }
+             if (cstate==1) {
+                 print "CRITICAL max:"max"% w:"w"% c:"c"%"; exit (2)
+             }
+             if (wstate==1) {
+                 print "WARNING max:"max"% w:"w"% c:"c"%"; exit (1)
+             } else {
+                 print "OK max:"max"% w:"w"% c:"c"%"; exit (0)
+             } 
+         }'

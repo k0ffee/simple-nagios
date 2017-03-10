@@ -1,0 +1,53 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- MySQL max connections
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -ue
+
+user=nagios
+host=$6
+pass=$8
+
+warn=$2
+crit=$4
+
+error () {
+    echo UNKNOWN
+    exit 3
+}
+
+[ $1 == "-w" ] || error
+[ $3 == "-c" ] || error
+[ $5 == "-h" ] || error
+[ $7 == "-p" ] || error
+[ $warn -gt $crit ] && error
+
+#
+# Temporary workaround:
+#
+schema=performance_schema
+mysql -h$host -u$user -p$pass -e \
+    'SELECT version()' | grep '^5\.6\.' >/dev/null && \
+        schema=information_schema
+
+mysql -h$host -u$user -p$pass -e \
+    "SELECT variable_value
+       FROM global_status
+      WHERE Variable_name='Threads_connected'" $schema 2>/dev/null | \
+    awk -v warn=$warn -v crit=$crit \
+        '{ if (NR==2) {
+               if($1!~/^[0-9]+/) {print "MySQL maxconn CRITICAL "$1; exit (2)}
+               if($1<warn) {print "MySQL maxconn OK "$1; exit (0)}
+               if($1<crit) {print "MySQL maxconn WARNING "$1; exit (1)}
+                   else {print "MySQL maxconn CRITICAL "$1; exit (2)}
+               }
+         } END {
+               if (NR==0) {
+                   print "UNKNOWN no data"; exit (3)
+               }
+         }'

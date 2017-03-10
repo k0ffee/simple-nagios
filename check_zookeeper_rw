@@ -1,0 +1,21 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- Zookeeper writeability
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -e
+
+host=$1
+port=$2
+
+[ -z $host ] && echo 'UNKNOWN' && exit 3
+[ -z $port ] && echo 'UNKNOWN' && exit 3
+
+echo 'isro' | nc -N $host $port 2>/dev/null | \
+    grep '^rw$' >/dev/null && echo 'OK rw' && exit 0
+
+echo 'WARNING read-only' && exit 1

@@ -1,0 +1,45 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- check balance of virtual chassis cluster across racks
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -e
+
+host=$1
+node1=$2
+node2=$3
+node3=$4
+node4=$5
+nodes=4
+
+[ -z $host  ] && echo UNKNOWN && exit 3
+[ -z $node1 ] && echo UNKNOWN && exit 3
+[ -z $node2 ] && echo UNKNOWN && exit 3
+[ -z $node3 ] && echo UNKNOWN && exit 3
+[ -z $node4 ] && echo UNKNOWN && exit 3
+
+snmpwalk -cpublic -v2c $host 1.3.6.1.4.1.2636.3.40.1.4.1.1.1.3 2>/dev/null | \
+    awk -vn1=$node1 -vn2=$node2 -vn3=$node3 -vn4=$node4 -vnodes=$nodes \
+        'BEGIN { wstate=0 }
+         { if (NR==1) { r1=$4 }} { if (NR==1 && r1!=n1) { wstate=1 }}
+         { if (NR==2) { r2=$4 }} { if (NR==2 && r2!=n2) { wstate=1 }}
+         { if (NR==3) { r3=$4 }} { if (NR==3 && r3!=n3) { wstate=1 }}
+         { if (NR==4) { r4=$4 }} { if (NR==4 && r4!=n4) { wstate=1 }}
+         END {
+             if (NR==0) {
+                 print "UNKNOWN no data"; exit (3)
+             }
+             if (NR!=nodes) {
+                 print "CRITICAL less than "nodes" VC nodes: "NR; exit (2)
+             }
+             if (wstate==1) {
+                 print "WARNING VC balance " r1, r2, r3, r4 \
+                         ", expecting " n1, n2 ,n3 ,n4; exit (1)
+             } else {
+                 print "OK VC node order " n1, n2, n3, n4; exit (0)
+             }
+         }'

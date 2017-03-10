@@ -1,0 +1,25 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- MySQL connectivity
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -e
+
+user=nagios
+host=$1
+pass=$2
+
+[ -z $1 ] && echo UNKNOWN && exit 3
+[ -z $2 ] && echo UNKNOWN && exit 3
+
+status=0
+mysql -h$host -u$user -p$pass -e '' 2>/dev/null || status=2
+
+case $status in
+    0) echo 'MySQL OK'; exit 0 ;;
+    2) echo 'MySQL CRITICAL down'; exit 2 ;;
+esac

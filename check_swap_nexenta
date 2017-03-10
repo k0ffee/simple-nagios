@@ -1,0 +1,116 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+#
+# A Nagios plugin.
+#
+# Fetches percentage of swap space used on Nexenta storage devices
+# using SNMP.
+#
+# Expects target hostname, warning percent threshold, critical
+# percent threshold.
+#
+# Example: $HOSTADDRESS$ 70 80
+#
+
+my ($warning, $critical, @state) = (0, 0, 0);
+my $host;
+
+my $oid_subtree = '.1.3.6.1.4.1.2021.4';  # UC Davis MIB
+
+#
+# Emit Nagios return codes:
+#
+use constant E_OK       => 0;
+use constant E_WARNING  => 1;
+use constant E_CRITICAL => 2;
+use constant E_UNKNOWN  => 3;
+
+if (exists $ARGV[0]) {
+    $host = $ARGV[0];
+} else {
+    print "UNKNOWN need \$host\n";
+    exit E_UNKNOWN
+}
+
+if (exists $ARGV[1]) {
+    $warning = $ARGV[1];
+} else {
+    print "UNKNOWN need \$warning\n";
+    exit E_UNKNOWN
+}
+
+if (exists $ARGV[2]) {
+    $critical = $ARGV[2];
+} else {
+    print "UNKNOWN need \$critical\n";
+    exit E_UNKNOWN
+}
+
+open(my $mib, "-|", "snmpwalk -v2c -c public $host $oid_subtree")
+    or die "cannot open: $!";
+
+my (@swap_total, @swap_avail, @message);
+
+while (<$mib>) {
+    if (/^UCD-SNMP-MIB::memTotalSwap\./) { pushv (\@swap_total) }
+    if (/^UCD-SNMP-MIB::memAvailSwap\./) { pushv (\@swap_avail) }
+}
+
+my ($percent, $offset) = (0, 0);
+
+foreach my $swap_total (@swap_total) {
+    if ($swap_total > 0) {
+        $percent = ($swap_total-$swap_avail[$offset]) / $swap_total * 100;
+    } else {
+        $percent = 0;
+    }
+
+    if ($percent >= $critical) {
+        push @state, 2;
+    }
+
+    if ($percent >= $warning) {
+        push @state, 1;
+    }
+
+    push @message, "$offset: $percent%";
+
+    $offset++;
+}
+
+
+foreach my $state (@state) {
+    if ($state == 2) {
+        print "CRITICAL c=$critical% @message\n";
+        exit E_CRITICAL;
+    }
+}
+
+foreach my $state (@state) {
+    if ($state == 1) {
+        print "WARNING w=$warning% @message\n";
+        exit E_WARNING
+    }
+}
+
+foreach my $state (@state) {
+    if ($state != 0) {
+        print "UNKNOWN\n";
+        exit E_UNKNOWN;
+    } else {
+        print "OK @message\n";
+        exit E_OK
+    }
+}
+
+sub getv {
+    chomp; s/.*\s+(\d+)\s+\S+/$1/;
+}
+
+sub pushv {
+    my ($arg1) = @_;
+    getv; push @$arg1, $_;
+}

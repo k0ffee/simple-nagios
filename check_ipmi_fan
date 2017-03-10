@@ -1,0 +1,34 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- check fans via IPMI
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -e
+
+user=readonly
+pass=readonly
+host=$1
+
+[ -z $host ] && echo UNKNOWN && exit 3
+
+ipmitool -U$user -LUSER -P$pass -H$host sdr 2>/dev/null | \
+    awk 'BEGIN {
+             status=0
+         }
+         {
+             if ($1 ~ /^FAN[0-9]*/ && $6 !~ /^(ns|ok)$/) {status=1}
+         }
+         END {
+             if (NR==0) {
+                 print "UNKNOWN no data"; exit (3)
+             }
+             if (status==1) {
+                 print "Fan WARNING"; exit (1)
+             } else {
+                 print "Fan OK"; exit (0)
+             }
+         }'

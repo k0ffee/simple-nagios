@@ -1,0 +1,75 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- LACP network interface state
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin:/sbin
+set -ue
+
+uname=`uname`
+
+case "$uname" in
+    FreeBSD)
+
+        flags='1c<ACTIVE,COLLECTING,DISTRIBUTING>'
+
+        ifconfig -a | \
+            awk '{ if ($1 ~/^lagg[[:digit:]]+:/)
+                     {
+                         split ($1, name, ":")
+                         print name[1]
+                     }
+                 }' | while read interface; do
+                          ifconfig -- "$interface"
+                      done | \
+                          awk -vstate=0 -vflags="$flags" \
+                              '{ if ($1=="laggport:")
+                                   {
+                                       split ($3, s3, "=")
+                                       if (s3[2]!=flags) { state=1 }
+                                       message=message" "$2": "$3
+                                   }
+                               } END {
+                                   { if (NR==0) {
+                                       print "UNKNOWN no data"; exit (3) }
+                                   }
+                                   { if (state==1) {
+                                           print "WARNING" message; exit (1)
+                                       } else {
+                                           print "OK" message; exit (0)
+                                       }
+                                   }
+                               }' ;;
+    Linux)
+
+        flags="up"
+    
+        if cd /proc/net/bonding; then
+            ls | grep . >/dev/null && \
+                awk -vstate=0 -vflags="$flags" \
+                   '{ if ($1=="MII" && $2=="Status:")
+                    {
+                        if ($3!=flags) { state=1 }
+                        message=message" "$1" "$2" "$3","
+                    }
+                } END {
+                    sub(/,$/, "", message)
+                    { if (NR==0) {
+                        print "UNKNOWN no data"; exit (3) }
+                    }
+                    { if (state==1) {
+                            print "WARNING" message; exit (1)
+                        } else {
+                            print "OK" message; exit (0)
+                        }
+                    }
+                }' *
+        else
+            echo "UNKNOWN"; exit 3
+        fi ;;
+    *)
+        echo "UNKNOWN"; exit 3 ;;
+esac

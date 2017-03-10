@@ -1,0 +1,22 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- check ZFS zpool health
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/sbin:/usr/bin:/bin
+set -e
+
+status=0
+zpool list -H -o name 2>/dev/null | \
+    while read zpool; do
+        zpool list -H -o health $zpool | \
+            grep ^ONLINE$ >/dev/null || status=1
+    done
+
+case $status in
+    0) echo zpool health OK && exit 0 ;;
+    1) echo zpool health WARNING && exit 1 ;;
+esac

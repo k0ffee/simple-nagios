@@ -1,0 +1,42 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- check Redis connectivity and memory usage
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -e
+
+host=$1
+port=$2
+warning=$3
+critical=$4
+
+[ -z $host ] && echo 'UNKNOWN' && exit 3
+[ -z $port ] && echo 'UNKNOWN' && exit 3
+[ -z $warning ] && echo 'UNKNOWN' && exit 3
+[ -z $critical ] && echo 'UNKNOWN' && exit 3
+
+printf 'info\r\nquit\r\n' | nc -N $host $port 2>/dev/null | \
+    awk -F: -vw=$warning -vc=$critical \
+        '{ if ($1=="used_memory") {u=$2*1} }
+         { if ($1=="maxmemory")   {m=$2*1} }
+         END {
+                 { if (NR==0) {
+                     print "UNKNOWN no data"; exit (3) }
+                 }
+                 { if (m==0) {
+                     print "CRITICAL max memory is zero"; exit (2) }
+                 }
+                 { v=(u/m)*100 }
+                 { if (v>=c) {
+                     print "CRITICAL "v"% memory usage"; exit (2) }
+                 }
+                 { if (v>=w) {
+                     print "WARNING "v"% memory usage"; exit (1) }
+                   else {
+                     print "OK "v"% memory usage"; exit (0) }
+                 }
+             }'

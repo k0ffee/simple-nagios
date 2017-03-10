@@ -1,0 +1,98 @@
+#! /usr/bin/env zsh
+
+#
+# 
+#
+
+PATH=/usr/local/bin:/usr/bin:/bin
+set -u
+
+ports=(7000 7001 7002)
+masters_port=7000
+slaves_per_master=2
+
+#
+# Emit Nagios return codes:
+#
+e_ok=0
+e_warning=1
+e_critical=2
+e_unknown=3
+
+state=$e_unknown
+balance=$e_unknown
+distribution=$e_unknown
+
+#
+# Try on all possible tcp-ports of cluster-daemons, who knows
+# in which state this cluster is.
+#
+# This tests if masters are on desired port (we want them to
+# always be there just to see if cluster got disturbed or not,
+# technically any daemon can be master on any port, it just
+# doesn't look nice).
+#
+for port in $ports; do
+    redis-cli -p $port cluster nodes 2>/dev/null | \
+        awk '$3~/^(myself,)?master$/&&$2!~/:'"$masters_port"'$/{print}' | \
+            grep . >/dev/null && state=$e_warning && break || state=$e_ok
+done
+
+#
+# This tests if each master has the desired number of slaves attached.
+#
+for port in $ports; do
+    redis-cli -p $port cluster nodes 2>/dev/null | \
+        awk '$3~/^(myself,)?master$/{print$1}' | \
+            while read line; do
+                redis-cli -p $port cluster nodes 2>/dev/null | \
+                    awk '$4=="'$line'"&&$8=="connected"' | \
+                        grep -c . | \
+                            grep "^$slaves_per_master\$" >/dev/null && \
+                                balance=$e_ok || balance=$e_warning && break
+            done
+done
+
+#
+# This tests if masters and their slaves are running on different
+# hosts, just for the sake of redundancy at host-level.
+#
+for port in $ports; do
+    redis-cli -p $port cluster nodes 2>/dev/null | \
+        awk '$3~/^(myself,)?master$/{print$1}' | \
+            while read line; do
+                redis-cli -p $port cluster nodes 2>/dev/null | \
+                    awk '($1=="'$line'"||$4=="'$line'") &&
+                         sub(/:[0-9]+$/,"",$2){print$2}' | sort | uniq -d | \
+                        grep . /dev/null && distribution=$e_warning && \
+                            break || distribution=$e_ok
+            done
+done
+
+if   [[ $state -eq 0 && $balance -eq 0 && $distribution -eq 0 ]]; then
+    print -n OK all hamsters on $masters_port and $slaves_per_master
+    print ' 'chomiks per hamster
+    exit $e_ok
+elif [[ $state -eq 1 && $balance -eq 0 && $distribution -eq 0 ]]; then
+    print WARNING masters not on $masters_port
+    exit $e_warning
+elif [[ $state -eq 0 && $balance -eq 1 && $distribution -eq 0 ]]; then
+    print WARNING not $slaves_per_master slaves per master
+    exit $e_warning
+elif [[ $state -eq 1 && $balance -eq 1 && $distribution -eq 0 ]]; then
+    print WARNING masters not on $masters_port and unbalanced slaves
+    exit $e_warning
+elif [[ $state -eq 0 && $balance -eq 0 && $distribution -eq 1 ]]; then
+    print WARNING master or slaves on same host
+    exit $e_warning
+elif [[ $state -eq 1 && $balance -eq 0 && $distribution -eq 1 ]]; then
+    print WARNING masters not on $masters_port and master or slaves on same host
+    exit $e_warning
+elif [[ $state -eq 1 && $balance -eq 1 && $distribution -eq 1 ]]; then
+    print -n WARNING masters not on $masters_port and unbalanced slaves
+    print ' 'and master or slaves on same host
+    exit $e_warning
+else
+    print UNKNOWN
+    exit $e_unknown
+fi

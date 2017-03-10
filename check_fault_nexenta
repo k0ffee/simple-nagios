@@ -1,0 +1,90 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+#
+# A Nagios plugin.
+#
+# Fetches fault list using NexentaStor REST-API.
+#
+# Expects REST-API URI as command line argument.
+#
+# Example: http://nagios@localhost:8457/rest/nms
+#
+
+my $uri;
+
+#
+# Emit Nagios return codes:
+#
+use constant E_OK       => 0;
+use constant E_WARNING  => 1;
+use constant E_CRITICAL => 2;
+use constant E_UNKNOWN  => 3;
+
+if (exists $ARGV[0]) {
+    $uri = $ARGV[0];
+} else {
+    print "UNKNOWN need \$uri\n";
+    exit E_UNKNOWN
+}
+
+use LWP::UserAgent;
+use JSON;
+
+my ($data, $json, $response) = ('', '', '');
+my (@triggers, $fault);
+
+sub request {
+    my $request = HTTP::Request->new (POST => $uri);
+    $request->content_type('application/json');
+    $request->content($data);
+
+    my $ua = LWP::UserAgent->new;
+    my $response = $ua->request($request);
+    return $response;
+}
+
+$data = '{"object":"trigger", "method":"get_names", "params":[""]}';
+$response = request;
+
+if ($response->is_success) {
+    $json = decode_json($response->decoded_content);
+    foreach my $trigger (@{$json->{result}}) {
+        push @triggers, $trigger;
+    }
+} else {
+    print "UNKNOWN in get_names\n";
+    exit E_UNKNOWN;
+}
+
+my ($warning, $critical) = (0, 0);
+my @message;
+
+foreach my $trigger (@triggers) {
+    $data = '{"object":"trigger",
+             "method":"get_faults",
+             "params":["' . $trigger . '"]}';
+
+    $response = request;
+
+    if ($response->is_success) {
+        $json = decode_json($response->decoded_content);
+        $fault = $json->{result};
+    } else {
+        print "UNKNOWN in get_faults\n";
+        exit E_UNKNOWN;
+    }
+    foreach my $key (keys %$fault) {
+        push @message, "$trigger: $json->{result}->{$key}->{description}";
+    }
+}
+
+if (@message) {
+    print "WARNING @message\n";
+    exit E_WARNING;
+} else {
+    print "OK no faults\n";
+    exit E_OK;
+}

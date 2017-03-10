@@ -1,0 +1,176 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+#
+# A Nagios plugin.
+#
+# Fetches percentage of space used on Nexenta storage devices
+# using NexentaStor REST-API.
+#
+# Expects warning percent threshold, critical percent threshold,
+# and REST-API URI as command line arguments.
+#
+# Example: 80 90 http://nagios@localhost:8457/rest/nms
+#
+
+my ($warning, $critical, @state) = (0, 0, 0);
+my $uri;
+
+#
+# Emit Nagios return codes:
+#
+use constant E_OK       => 0;
+use constant E_WARNING  => 1;
+use constant E_CRITICAL => 2;
+use constant E_UNKNOWN  => 3;
+
+if (exists $ARGV[0]) {
+    $warning = $ARGV[0];
+} else {
+    print "UNKNOWN need \$warning\n";
+    exit E_UNKNOWN
+}
+
+if (exists $ARGV[1]) {
+    $critical = $ARGV[1];
+} else {
+    print "UNKNOWN need \$critical\n";
+    exit E_UNKNOWN
+}
+
+if (exists $ARGV[2]) {
+    $uri = $ARGV[2];
+} else {
+    print "UNKNOWN need \$uri\n";
+    exit E_UNKNOWN
+}
+
+my $syspool = 'syspool';
+
+if (exists $ARGV[0] and $ARGV[0] eq 'autoconf') {
+    print "yes\n";
+    exit 0;
+}
+
+use LWP::UserAgent;
+use JSON;
+
+my ($data, $json, $response) = ('', '', '');
+
+sub request {
+    my $request = HTTP::Request->new (POST => $uri);
+    $request->content_type('application/json');
+    $request->content($data);
+
+    my $ua = LWP::UserAgent->new;
+    my $response = $ua->request($request);
+    return $response;
+}
+
+my @folders = ($syspool);
+
+$data = '{"object":"folder", "method":"get_names", "params":[""]}';
+$response = request;
+
+if ($response->is_success) {
+    $json = decode_json($response->decoded_content);
+    foreach my $folder (@{$json->{result}}) {
+        push @folders, $folder;
+    }
+} else {
+    print "UNKNOWN in get_names\n";
+    exit E_UNKNOWN;
+}
+
+my ($used, $avail, $percent) = (0, 0, 0);
+my @message;
+
+foreach my $folder (@folders) {
+    $data = '{"object":"folder",
+             "method":"get_child_prop",
+             "params":["' . $folder . '", "used"]}';
+
+    $response = request;
+
+    if ($response->is_success) {
+        $json = decode_json($response->decoded_content);
+        $used = $json->{result};
+    } else {
+        print "UNKNOWN in get_child_prop: used\n";
+        exit E_UNKNOWN;
+    }
+
+    $data = '{"object":"folder",
+             "method":"get_child_prop",
+             "params":["' . $folder . '", "available"]}';
+
+    $response = request;
+
+    if ($response->is_success) {
+        $json  = decode_json($response->decoded_content);
+        $avail = $json->{result};
+    } else {
+        print "UNKNOWN in get_child_prop: avail\n";
+        exit E_UNKNOWN;
+    }
+
+    my $n_used  = unformat_number($used);
+    my $n_avail = unformat_number($avail);
+
+    if (($n_avail + $n_used) > 0) {
+        $percent = $n_used / ($n_avail + $n_used) * 100;
+    } else {
+        $percent = 0;
+    }
+
+    if ($percent >= $critical) {
+        push @state, 2;
+    }
+
+    if ($percent >= $warning) {
+        push @state, 1;
+    }
+
+    $percent = sprintf("%.2f", $percent);
+
+    push @message, "$folder: $percent%"
+}
+
+foreach my $state (@state) {
+    if ($state == 2) {
+        print "CRITICAL c=$critical% @message\n";
+        exit E_CRITICAL;
+    }
+}
+
+foreach my $state (@state) {
+    if ($state == 1) {
+        print "WARNING w=$warning% @message\n";
+        exit E_WARNING
+    }
+}
+
+foreach my $state (@state) {
+    if ($state != 0) {
+        print "UNKNOWN\n";
+        exit E_UNKNOWN;
+    } else {
+        print "OK @message\n";
+        exit E_OK
+    }
+}
+
+sub unformat_number {
+    my $number = shift;
+    my $base   = 1024;
+    my @symbols = ('', qw(K M G T P E Z Y));
+    foreach my $offset (0 .. $#symbols) {
+        my $symbol = $symbols[$offset];
+        if ($number =~ /^([\d.]+)$symbol\z/i ) {
+            return ($1 * ($base ** $offset));
+        }
+    }
+    return $number;
+}

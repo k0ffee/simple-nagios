@@ -1,0 +1,26 @@
+#!/bin/sh
+
+#
+# Nagios plugin -- check NFS export availability
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+
+PATH=/sbin:/usr/bin:/bin
+set -e
+
+host=$1
+directory=$2
+
+[ -z $host ]      && echo NFS UNKNOWN && exit 3
+[ -z $directory ] && echo NFS UNKNOWN && exit 3
+
+status=0
+showmount -e $host 2>/dev/null | \
+    grep -E "^$directory[[:space:]]+Everyone$" >/dev/null || \
+        status=2
+
+case $status in
+    0) echo NFS OK $directory       && exit 0 ;;
+    2) echo NFS CRITICAL $directory && exit 2 ;;
+esac

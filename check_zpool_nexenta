@@ -1,0 +1,119 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+#
+# A Nagios plugin.
+#
+# Fetches health of storage pools on Nexenta appliance
+# using NexentaStor REST-API.
+#
+# Expects REST-API URI as command line argument.
+#
+# Example: http://nagios@localhost:8457/rest/nms
+#
+
+my @good_state = ('ONLINE', 'AVAILABLE');
+my @bad_state = ('FAULTED');
+my $syspool = 'syspool';
+my $uri;
+
+#
+# Emit Nagios return codes:
+#
+use constant E_OK       => 0;
+use constant E_WARNING  => 1;
+use constant E_CRITICAL => 2;
+use constant E_UNKNOWN  => 3;
+
+if (exists $ARGV[0]) {
+    $uri = $ARGV[0];
+} else {
+    print "UNKNOWN need \$uri\n";
+    exit E_UNKNOWN
+}
+
+use LWP::UserAgent;
+use JSON;
+
+my ($data, $json, $response) = ('', '', '');
+
+sub request {
+    my $request = HTTP::Request->new (POST => $uri);
+    $request->content_type('application/json');
+    $request->content($data);
+
+    my $ua = LWP::UserAgent->new;
+    my $response = $ua->request($request);
+    return $response;
+}
+
+my @volumes = ($syspool);
+
+$data = '{"object":"volume", "method":"get_names", "params":[""]}';
+$response = request;
+
+if ($response->is_success) {
+    $json = decode_json($response->decoded_content);
+
+    foreach my $volume (@{$json->{result}}) {
+        push @volumes, $volume;
+    }
+} else {
+    print "UNKNOWN in get_names\n";
+    exit E_UNKNOWN;
+}
+
+my $health = '';
+my ($warning, $critical) = (0, 0);
+my @message;
+
+foreach my $volume (@volumes) {
+    $data = '{"object":"volume",
+             "method":"get_child_prop",
+             "params":["' . $volume . '", "health"]}';
+
+    $response = request;
+
+    if ($response->is_success) {
+        $json = decode_json($response->decoded_content);
+        $health = $json->{result};
+    } else {
+        print "UNKNOWN in get_child_prop\n";
+        exit E_UNKNOWN;
+    }
+    push @message, "$volume: $health";
+
+    foreach my $state (@good_state) {
+        if ($health eq $state) {
+            last;
+        }
+        $warning = 1;
+    }
+
+    foreach my $state (@bad_state) {
+        if ($health eq $state) {
+            $critical = 1;
+            last;
+        }
+    }
+}
+
+if ($critical == 1) {
+    print "CRITICAL @message\n";    
+    exit E_CRITICAL;
+}
+
+if ($warning == 1) {
+    print "WARNING @message\n";    
+    exit E_WARNING;
+}
+
+if (@message) {
+    print "OK @message\n";
+    exit E_OK;
+} else {
+    print "UNKNOWN\n";
+    exit E_UNKNOWN;
+}
