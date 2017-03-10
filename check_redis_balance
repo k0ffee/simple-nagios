@@ -64,7 +64,7 @@ for port in $ports; do
                 redis-cli -p $port cluster nodes 2>/dev/null | \
                     awk '($1=="'$line'"||$4=="'$line'") &&
                          sub(/:[0-9]+$/,"",$2){print$2}' | sort | uniq -d | \
-                        grep . /dev/null && distribution=$e_warning && \
+                        grep . >/dev/null && distribution=$e_warning && \
                             break || distribution=$e_ok
             done
 done
