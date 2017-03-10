@@ -49,7 +49,7 @@ for port in $ports; do
                     awk '$4=="'$line'"&&$8=="connected"' | \
                         grep -c . | \
                             grep "^$slaves_per_master\$" >/dev/null && \
-                                balance=$e_ok || balance=$e_warning && break
+                                balance=$e_ok || {balance=$e_warning && break}
             done
 done
 
