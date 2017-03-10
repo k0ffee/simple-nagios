@@ -1,4 +1,4 @@
-#! /usr/bin/env zsh
+#! /usr/local/bin/zsh
 
 #
 # 
@@ -70,29 +70,30 @@ for port in $ports; do
 done
 
 if   [[ $state -eq 0 && $balance -eq 0 && $distribution -eq 0 ]]; then
-    print -n OK all hamsters on $masters_port and $slaves_per_master
-    print ' 'chomiks per hamster
+    print -n "OK all masters on $masters_port and $slaves_per_master"
+    print " slaves per master"
     exit $e_ok
 elif [[ $state -eq 1 && $balance -eq 0 && $distribution -eq 0 ]]; then
-    print WARNING masters not on $masters_port
+    print "WARNING masters not on $masters_port"
     exit $e_warning
-elif [[ $state -eq 0 && $balance -eq 1 && $distribution -eq 0 ]]; then
-    print WARNING not $slaves_per_master slaves per master
+elif [[ $state -eq 0 && $balance -eq 1 ]]; then
+    print "WARNING not $slaves_per_master slaves per master"
     exit $e_warning
-elif [[ $state -eq 1 && $balance -eq 1 && $distribution -eq 0 ]]; then
-    print WARNING masters not on $masters_port and unbalanced slaves
+elif [[ $state -eq 1 && $balance -eq 1 ]]; then
+    print "WARNING masters not on $masters_port and unbalanced slaves"
     exit $e_warning
 elif [[ $state -eq 0 && $balance -eq 0 && $distribution -eq 1 ]]; then
-    print WARNING master or slaves on same host
+    print "WARNING master or slaves on same host"
     exit $e_warning
 elif [[ $state -eq 1 && $balance -eq 0 && $distribution -eq 1 ]]; then
-    print WARNING masters not on $masters_port and master or slaves on same host
+    print -n "WARNING masters not on $masters_port and"
+    print " master or slaves on same host"
     exit $e_warning
 elif [[ $state -eq 1 && $balance -eq 1 && $distribution -eq 1 ]]; then
-    print -n WARNING masters not on $masters_port and unbalanced slaves
-    print ' 'and master or slaves on same host
+    print -n "WARNING masters not on $masters_port and unbalanced slaves"
+    print " and master or slaves on same host"
     exit $e_warning
 else
-    print UNKNOWN
+    print "UNKNOWN"
     exit $e_unknown
 fi
