@@ -29,7 +29,7 @@ error () {
 [ $warn -gt $crit ] && error
 
 mysql -h$host -u$user -p$pass -e 'show slave status \G;
-                          select(1)' 2>/dev/null | \
+                                  select(1)' 2>/dev/null | \
     awk -v warn=$warn -v crit=$crit -v string=$string \
         '{ if($1==string) {
               if ($2!~/^[0-9]+$/) {print "MySQL lag CRITICAL "$2; exit(2)}
