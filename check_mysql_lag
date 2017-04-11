@@ -5,6 +5,10 @@
 #
 # Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
 #
+# Usage:
+#     check_mysql_lag -w <warning_time> -c <critical_time> \
+#                     -h <database_hostname> -p <password>
+#
 
 PATH=/usr/local/bin:/usr/bin:/bin
 set -e
@@ -31,17 +35,24 @@ error () {
 mysql -h$host -u$user -p$pass -e 'show slave status \G;
                                   select(1)' 2>/dev/null | \
     awk -v warn=$warn -v crit=$crit -v string=$string \
-        '{ if($1==string) {
-              if ($2!~/^[0-9]+$/) {print "MySQL lag CRITICAL "$2; exit(2)}
-              if ($2<warn) {print "MySQL lag OK "$2; exit(0)}
-              if ($2>crit) {print "MySQL lag CRITICAL "$2; exit(2)}
-                  else {print "MySQL lag WARNING "$2; exit(1)}
-              }
-              if ($1==1) {
-                  print "MySQL lag CRITICAL replication not running"; exit(2)
-              }
+        '{ if ($1==string) {
+             if ($2!~/^[0-9]+$/) {
+                 print "MySQL lag CRITICAL "$2; exit(2)
+             }
+             if ($2<warn) {
+                 print "MySQL lag OK "$2; exit(0)
+             }
+             if ($2>crit) {
+                 print "MySQL lag CRITICAL "$2; exit(2)
+             } else {
+                 print "MySQL lag WARNING "$2; exit(1)
+             }
+         }
+         if ($1==1) {
+             print "MySQL lag CRITICAL replication not running"; exit(2)
+         }
          } END {
-              if (NR==0) {
-                  print "UNKNOWN no data"; exit (3)
-              }
+             if (NR==0) {
+                 print "UNKNOWN no data"; exit (3)
+             }
          }'
