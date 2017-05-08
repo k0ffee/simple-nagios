@@ -1,0 +1,60 @@
+#! /usr/local/bin/zsh
+
+#
+# Nagios plugin -- check state of CARP interfaces
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+# Usage:
+#
+#   It expects groups of acceptable or desired states:
+#       <vhid>:<state>[,<vhid>:<state>][...]
+#   With interface state as
+#       "m" = master,
+#       "b" = backup.
+#   Example with four CARP interfaces:
+#       check_carp_state 1:m,2:m,3:b,4:b 1:m,2:m,3:m,4:m 1:b,2:b,3:b,4:b
+#
+
+PATH=/sbin:/usr/bin:/bin
+set -eu
+
+promises=($@)
+message=()
+
+[[ -z $promises[*] ]] && print 'UNKNOWN' && exit 3
+
+ifconfig -a 2>/dev/null | while read line; do
+    #
+    # Assuming ifconfig(8) lines and fields to be like:
+    #     carp: BACKUP vhid 4 advbase 1 advskew 200  
+    #
+    case ${line%% *} in (carp:)             # 1st field
+        case ${${line#* * }%% *} in (vhid)  # 3rd field
+            vhid=${${line#* * * }%% *}      # 4th field
+            case ${${line#* }%% *} in       # 2nd field
+                (MASTER) message+="$vhid:m" ;;
+                (BACKUP) message+="$vhid:b" ;;
+                (*)      message+="$vhid:?" ;;
+            esac
+        esac
+    esac
+done
+
+case $message in
+    ('') print 'UNKNOWN no data'; exit 3 ;;
+    (*)  message=${(j:,:)message} ;;
+esac
+
+for group in $promises; do
+    case $group in ($message)
+        #
+        # Found matching group, bailing out successfully.
+        #
+        print -r "OK $message"
+        exit 0
+    esac
+done
+
+print -r "WARNING $message ($promises)"
+exit 1
