@@ -7,16 +7,17 @@
 #
 
 PATH=/sbin:/usr/bin:/bin
-set -e
+set -eu
 
-status=0
+warning () {
+    echo "WARNING zpool $zpool"
+    exit 1
+}
+
 zpool list -H -o name 2>/dev/null | \
     while read zpool; do
         zpool list -H -o health $zpool | \
-            grep ^ONLINE$ >/dev/null || status=1
+            grep ^ONLINE$ >/dev/null || warning
     done
 
-case $status in
-    0) echo zpool health OK && exit 0 ;;
-    1) echo zpool health WARNING && exit 1 ;;
-esac
+echo "zpool health OK"
