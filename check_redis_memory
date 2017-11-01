@@ -19,7 +19,7 @@ critical=$4
 [ -z $warning ] && echo 'UNKNOWN' && exit 3
 [ -z $critical ] && echo 'UNKNOWN' && exit 3
 
-printf 'info\r\nquit\r\n' | nc -N $host $port 2>/dev/null | \
+printf 'info\r\nquit\r\n' | nc -N -- $host $port 2>/dev/null | \
     awk -F: -vw=$warning -vc=$critical \
         '{ if ($1=="used_memory") {u=$2*1} }
          { if ($1=="maxmemory")   {m=$2*1} }

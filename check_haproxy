@@ -16,7 +16,7 @@ port=$2
 [ -z $port ] && echo 'UNKNOWN' && exit 3
 
 status=0
-printf 'GET /haproxy_stats HTTP/1.0\n\n' | nc $host $port 2>/dev/null | \
+printf 'GET /haproxy_stats HTTP/1.0\n\n' | nc -- $host $port 2>/dev/null | \
     head -1 | grep '^HTTP/1.1 200 OK' >/dev/null || status=2
 
 case $status in

@@ -16,7 +16,7 @@ number_of_datanodes=$2
 [ -z $host ]                && echo 'UNKNOWN' && exit 3
 [ -z $number_of_datanodes ] && echo 'UNKNOWN' && exit 3
 
-printf 'GET /_cluster/health HTTP/1.0\n\n' | nc $host $port 2>/dev/null | \
+printf 'GET /_cluster/health HTTP/1.0\n\n' | nc -- $host $port 2>/dev/null | \
     awk -F, -vd=$number_of_datanodes \
         '{ if (NR==5 && /^{"cluster_name":/)
                { split ($2, status, ":")

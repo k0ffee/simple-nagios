@@ -15,7 +15,7 @@ port=$2
 [ -z $host ] && echo 'UNKNOWN' && exit 3
 [ -z $port ] && echo 'UNKNOWN' && exit 3
 
-echo 'srvr' | nc -N $host $port 2>/dev/null | \
+echo 'srvr' | nc -N -- $host $port 2>/dev/null | \
     awk 'BEGIN { state=0 }
          {
              if ($1=="Mode:") {

@@ -15,7 +15,7 @@ port=$2
 [ -z $host ] && echo 'UNKNOWN' && exit 3
 [ -z $port ] && echo 'UNKNOWN' && exit 3
 
-echo 'isro' | nc -N $host $port 2>/dev/null | \
+echo 'isro' | nc -N -- $host $port 2>/dev/null | \
     grep '^rw$' >/dev/null && echo 'OK rw' && exit 0
 
 echo 'WARNING read-only' && exit 1

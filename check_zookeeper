@@ -15,7 +15,7 @@ port=$2
 [ -z $host ] && echo 'UNKNOWN' && exit 3
 [ -z $port ] && echo 'UNKNOWN' && exit 3
 
-echo 'ruok' | nc -N $host $port 2>/dev/null | \
+echo 'ruok' | nc -N -- $host $port 2>/dev/null | \
     grep '^imok$' >/dev/null && echo 'OK imok' && exit 0
 
 echo 'WARNING ruok?' && exit 1
