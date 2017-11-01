@@ -1,7 +1,9 @@
 #! /usr/local/bin/zsh
 
 #
-# 
+# Nagios plugin -- check balance of Redis cluster nodes.
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
 #
 
 PATH=/usr/local/bin:/usr/bin:/bin
