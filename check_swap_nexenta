@@ -81,7 +81,6 @@ foreach my $swap_total (@swap_total) {
     $offset++;
 }
 
-
 foreach my $state (@state) {
     if ($state == 2) {
         print "CRITICAL c=$critical% @message\n";
