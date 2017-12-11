@@ -15,7 +15,7 @@ host=$1
 
 oid=.1.3.6.1.4.1.2636.3.1.13.1.6.9
 
-snmpwalk -c public -v 2c $host $oid 2>/dev/null | \
+snmpwalk -c public -v 2c -- $host $oid 2>/dev/null | \
     awk 'BEGIN { state=0 }
          { if ($4!=2 && $4!=3 && $4!=5 && $4!=7) { state=1 }
            if ($4==1) { message=message" "NR": unknown," } 

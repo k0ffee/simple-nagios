@@ -22,7 +22,7 @@ nodes=4
 [ -z $node3 ] && echo UNKNOWN && exit 3
 [ -z $node4 ] && echo UNKNOWN && exit 3
 
-snmpwalk -cpublic -v2c $host 1.3.6.1.4.1.2636.3.40.1.4.1.1.1.3 2>/dev/null | \
+snmpwalk -cpublic -v2c -- $host 1.3.6.1.4.1.2636.3.40.1.4.1.1.1.3 2>/dev/null | \
     awk -vn1=$node1 -vn2=$node2 -vn3=$node3 -vn4=$node4 -vnodes=$nodes \
         'BEGIN { wstate=0 }
          { if (NR==1) { r1=$4 }} { if (NR==1 && r1!=n1) { wstate=1 }}
