@@ -49,7 +49,7 @@ if (exists $ARGV[2]) {
     exit E_UNKNOWN
 }
 
-open(my $mib, "-|", "snmpwalk -v2c -c public -- $host $oid_subtree")
+open(my $mib, "-|", "snmpwalk -c public -v 2c -- $host $oid_subtree")
     or die "cannot open: $!";
 
 my (@swap_total, @swap_avail, @message);
