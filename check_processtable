@@ -1,0 +1,90 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+#
+# A Nagios plugin.
+#
+# Searches process table for long-running processes.
+# See "usage" below for options.
+#
+
+use Proc::ProcessTable;
+
+#
+# Emit Nagios return codes:
+#
+use constant E_OK       => 0;
+use constant E_WARNING  => 1;
+use constant E_CRITICAL => 2;
+use constant E_UNKNOWN  => 3;
+
+#
+# Default values for time, warning and critical level:
+#
+my $t_def = 60;
+my $w_def = 1;
+my $c_def = 2;
+
+sub usage() {
+    print STDERR << "EOF";
+usage: $0 [-h] \
+    [-p "parent process name"]
+    [-t "time spend by process in seconds          (default value $t_def)"]
+    [-w "warning amount of long running processes  (default value $w_def)"]
+    [-c "critical amount of long running processes (default value $c_def)"]
+    -h : show this help message
+EOF
+    exit E_UNKNOWN;
+}
+
+use Getopt::Std;
+my $opt_string = 'hp:t:w:c:';
+my %opt; getopts("$opt_string", \%opt) or usage();
+
+usage() if $opt{h};
+
+my $parent    = $opt{p};
+my $time      = $opt{t} || $t_def;
+my $warning   = $opt{w} || $w_def;
+my $critical  = $opt{c} || $c_def;
+
+my $now   = time;
+my $table = Proc::ProcessTable->new;
+
+my @parent_pid;
+if ($parent) {
+    foreach my $process (@{$table->table}) {
+        if ($parent and $process->cmndline eq $parent) {
+            push @parent_pid, $process->pid;
+        }
+    }
+}
+
+my @warnings;
+foreach my $process (@{$table->table}) {
+    if ($parent) {
+        foreach my $parent_pid (@parent_pid) {
+            if ($process->ppid == $parent_pid and
+                $now - $process->start > $time) {
+                push @warnings, $process->pid;
+            }
+        }
+    } elsif ($now - $process->start > $time) {
+        push @warnings, $process->pid;
+    }
+}
+
+my $num = scalar(@warnings);
+
+if ($num >= $critical) {
+    print "CRITICAL: $num\n";
+    exit E_CRITICAL;
+} elsif ($num >= $warning) {
+    print "WARNING: $num\n";
+    exit E_WARNING;
+} else {
+    print "OK: $num\n";
+    exit E_OK;
+}
