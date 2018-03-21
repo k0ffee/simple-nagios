@@ -1,0 +1,73 @@
+#! /bin/zsh
+
+#
+# Nagios plugin -- check state of keepalived VRRP instances
+#
+# Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
+#
+# From keepalived's "notify" the state file contains:
+#
+#   Field 1 INSTANCE or GROUP type (vrrp_instance, vrrp_sync_group)
+#   Field 2 name of the vrrp_instance or vrrp_sync_group
+#   Field 3 MASTER, BACKUP, or FAULT state 
+#
+# Usage:
+#
+# It expects groups of acceptable or desired states:
+#   <visg>:<state>[,<vsig>:<state>][...]
+# With interface state as
+#   "m" = master,
+#   "b" = backup.
+# Example with four VRRP instances:
+#   lb1_active_ipv4:m,lb1_active_ipv6:m,lb1_passive_ipv4:b,lb1_passive_ipv6:b \
+#   lb1_active_ipv4:b,lb1_active_ipv6:b,lb1_passive_ipv4:m,lb1_passive_ipv6:m \
+#   lb1_active_ipv4:m,lb1_active_ipv6:m,lb1_passive_ipv4:m,lb1_passive_ipv6:m \
+#   lb1_active_ipv4:b,lb1_active_ipv6:b,lb1_passive_ipv4:b,lb1_passive_ipv6:b
+#
+
+PATH=/sbin:/usr/bin:/bin
+set -eu
+
+promises=($@)
+message=()
+
+statefile=/var/run/keepalived.state
+
+[[ -z $promises[*] ]] && print 'UNKNOWN' && exit 3
+[[ -f $statefile && -r $statefile ]] || { print 'UNKNOWN statefile' && exit 3 }
+
+pgrep -x keepalived 1>/dev/null || print 'WARNING stale data' && exit 1
+
+sort -- "$statefile" | while read line; do
+    #
+    # Assuming state file lines and fields to be like:
+    #     INTERFACE lb1_active_ipv4 MASTER
+    #     INTERFACE lb1_active_ipv6 MASTER
+    #     INTERFACE lb1_passive_ipv4 BACKUP
+    #     INTERFACE lb1_passive_ipv6 BACKUP
+    #
+    visg=${${line#* }%% *}       # 2nd field, instance or sync group name
+    case ${${line#* * }%% *} in  # 3rd field, status
+        (MASTER) message+="$visg:m" ;;
+        (BACKUP) message+="$visg:b" ;;
+        (*)      message+="$visg:?" ;;
+    esac
+done
+
+case $message in
+    ('') print 'UNKNOWN no data'; exit 3 ;;
+    (*)  message=${(j:,:)message} ;;
+esac
+
+for group in $promises; do
+    case $group in ($message)
+        #
+        # Found matching group, bailing out successfully.
+        #
+        print -r "OK $message"
+        exit 0
+    esac
+done
+
+print -r "WARNING $message ($promises)"
+exit 1
