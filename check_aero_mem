@@ -1,0 +1,154 @@
+#! /usr/bin/env perl
+
+use warnings;
+use strict;
+
+#
+# A Nagios plugin.
+#
+# Checks Aerospike daemon for namespace memory usage and
+# stop-writes condition.
+#
+# Maximum acceptable memory usage depends on the number of nodes in
+# the cluster: The fewer nodes, the more data the other nodes have
+# to redistribute after a single node failure.
+#
+# Example with four nodes and replication factor 2:
+#   node 1: 66% -> unavailable (66% / 3 = 22%)
+#   node 2: 66% -> 88%
+#   node 3: 66% -> 88%
+#   node 4: 66% -> 88%
+#
+# For possible asinfo commands, see:
+# https://github.com/aerospike/aerospike-server/blob/
+# c302133b6ddc96be853b0a1857af12e80ca12c0d/as/src/base/thr_info.c#L6904-L6913
+#
+
+use constant HEADROOM => 5;  # percent of namespace memory
+
+#
+# Emit Nagios return codes:
+#
+use constant E_OK       => 0;
+use constant E_WARNING  => 1;
+use constant E_CRITICAL => 2;
+use constant E_UNKNOWN  => 3;
+
+use IO::Socket;
+
+my $sock = new IO::Socket::INET (
+    PeerAddr => 'localhost',
+    PeerPort => '3003',
+    Proto => 'tcp',
+) or print "UNKNOWN connect: $!\n" and exit E_UNKNOWN;
+
+$sock->autoflush(1);
+
+sub getvalue ($) {
+    #
+    # A shortcut for extracting the right hand side value:
+    #
+    my (@kv, $v, $arg);
+    $arg = pop @_;
+    @kv = grep (/^$arg=/, split (';', $_));
+    @kv = split ('=', pop @kv);
+    $v = pop @kv;
+}
+
+my $nodes = 1;  # this local node
+
+print $sock "services\n";  # the other nodes in the cluster
+
+while (<$sock> ) {
+    chomp;
+    my $count = () = $_ =~ m/;/g;
+    $nodes = $nodes + $count;
+
+    if ($nodes == 1) {
+        print "UNKNOWN single node\n";
+        exit E_UNKNOWN;
+    }
+    last;
+}
+
+print $sock "namespaces\n";
+
+my (@namespaces, @warning, @ok) = ();
+
+while (<$sock> ) {
+    chomp;
+    my @ns = split (';', $_);
+    if (@ns) {
+        foreach my $name (@ns) {
+            push @namespaces, $name;
+        }
+    } else {
+        print "UNKNOWN no namespaces\n";
+        exit E_UNKNOWN
+    }
+    last;
+}
+
+foreach my $name (@namespaces) {
+
+    print $sock "namespace/$name\n";
+
+    while (<$sock> ) {
+        chomp;
+        my $stop = getvalue ("stop_writes");
+        if ($stop eq "true") {
+            print "CRITICAL stop-writes true\n";
+            exit E_CRITICAL;
+        } elsif ($stop ne "false") {
+            print "UNKNOWN stop-write \"$stop\"\n";
+            exit E_UNKNOWN;
+        }
+
+        my $memsize = getvalue ("memory-size");
+        if ($memsize =~ /\D/ or $memsize eq "" or $memsize < 1 ) {
+            print "UNKNOWN memory-size \"$memsize\"\n";
+            exit E_UNKNOWN;
+        }
+
+        my $memuse = getvalue ("memory_used_bytes");
+        if ($memuse =~ /\D/ or $memuse eq "") {
+            print "UNKNOWN memory_used_bytes \"$memuse\"\n";
+            exit E_UNKNOWN;
+        }
+
+        my $used = sprintf("%.2f", $memuse / $memsize);
+        if ($used < 0 or $used > 100) {
+            print "UNKNOWN percent memory used: $used\n";
+            exit E_UNKNOWN;
+        }
+
+        my $stoppct = getvalue ("stop-writes-pct");
+        if ($stoppct =~ /\D/ or $stoppct eq "" or $stoppct > 100) {
+            print "UNKNOWN percent stop-writes \"$stoppct\"\n";
+            exit E_UNKNOWN;
+        }
+
+        if ($used >= $stoppct) {
+            print "CRITICAL stop-writes u:$used s:$stoppct\n";
+            exit E_CRITICAL;
+        }
+
+        my $target = sprintf("%.2f",
+                            ($stoppct - HEADROOM) / $nodes * ($nodes - 1));
+
+        if ($used > $target) {
+            push @warning, "\"$name\" memory u:$used > t:$target%";
+        } else {
+            push @ok, "\"$name\" $used%";
+        }
+        last;
+    }
+}
+
+if (@warning) {
+    print "WARNING @warning\n";
+    exit E_WARNING;
+}
+
+print "OK @ok\n";
+exit E_OK;
