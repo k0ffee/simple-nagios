@@ -119,7 +119,7 @@ foreach my $name (@namespaces) {
             exit E_UNKNOWN;
         }
 
-        my $used = sprintf("%.2f", $memuse / $memsize);
+        my $used = sprintf("%.2f", 100 * $memuse / $memsize);
         if ($used < 0 or $used > 100) {
             print "UNKNOWN percent memory used: $used\n";
             exit E_UNKNOWN;
