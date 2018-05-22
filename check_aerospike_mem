@@ -61,8 +61,11 @@ print $sock "services\n";  # the other nodes in the cluster
 
 while (<$sock> ) {
     chomp;
+    #
+    # "node2;node3;node4" = 2 ";" = 3 nodes
+    #
     my $count = () = $_ =~ m/;/g;
-    $nodes = $nodes + $count;
+    $nodes = $nodes + $count + 1;
 
     if ($nodes == 1) {
         print "UNKNOWN single node\n";
