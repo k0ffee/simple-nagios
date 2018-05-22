@@ -140,7 +140,7 @@ foreach my $name (@namespaces) {
                             ($stoppct - HEADROOM) / $nodes * ($nodes - 1));
 
         if ($used > $target) {
-            push @warning, "\"$name\" memory u:$used > t:$target%";
+            push @warning, "\"$name\" memory $used% > $target%";
         } else {
             push @ok, "\"$name\" $used%";
         }
@@ -149,7 +149,7 @@ foreach my $name (@namespaces) {
 }
 
 if (@warning) {
-    print "WARNING @warning\n";
+    print "WARNING @warning @ok\n";
     exit E_WARNING;
 }
 
