@@ -41,9 +41,9 @@ mysql -h$host -u$user -p$pass -e \
       WHERE Variable_name='Threads_connected'" $schema 2>/dev/null | \
     awk -v warn=$warn -v crit=$crit \
         '{ if (NR==2) {
-               if($1!~/^[0-9]+/) {print "MySQL maxconn CRITICAL "$1; exit (2)}
-               if($1<warn) {print "MySQL maxconn OK "$1; exit (0)}
-               if($1<crit) {print "MySQL maxconn WARNING "$1; exit (1)}
+               if ($1!~/^[0-9]+/) {print "MySQL maxconn CRITICAL "$1; exit (2)}
+               if ($1<warn) {print "MySQL maxconn OK "$1; exit (0)}
+               if ($1<crit) {print "MySQL maxconn WARNING "$1; exit (1)}
                    else {print "MySQL maxconn CRITICAL "$1; exit (2)}
                }
          } END {
