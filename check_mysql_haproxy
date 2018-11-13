@@ -21,8 +21,8 @@ printf 'GET / HTTP/1.0\n\n' | nc -- $host $port 2>/dev/null | \
     head -1 | grep '^HTTP/1.1 200 OK' >/dev/null || status=1
 
 case $status in
-    0) echo "OK"; exit 0 ;;
-    1) printf "WARNING"
+    0) echo 'OK'; exit 0 ;;
+    1) printf 'WARNING'
        printf 'GET / HTTP/1.0\n\n' | nc -- $host $port 2>/dev/null | \
            head -1 | sed 's/[^ ]* / /' | grep . || printf '\n'
        exit 1 ;;

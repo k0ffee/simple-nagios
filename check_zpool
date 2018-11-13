@@ -17,7 +17,7 @@ warning () {
 zpool list -H -o name 2>/dev/null | \
     while read zpool; do
         zpool list -H -o health $zpool | \
-            grep ^ONLINE$ >/dev/null || warning
+            grep '^ONLINE$' >/dev/null || warning
     done
 
-echo "zpool health OK"
+echo 'zpool health OK'

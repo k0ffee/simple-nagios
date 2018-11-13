@@ -68,8 +68,8 @@ case "$uname" in
                     }
                 }' *
         else
-            echo "UNKNOWN"; exit 3
+            echo 'UNKNOWN'; exit 3
         fi ;;
     *)
-        echo "UNKNOWN"; exit 3 ;;
+        echo 'UNKNOWN'; exit 3 ;;
 esac
