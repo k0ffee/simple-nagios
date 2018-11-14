@@ -17,7 +17,7 @@ host=$1
 
 #
 # Let's consider anything but all slots filled with working
-# power supplies an error. That is systems with 2 slots must
+# power supplies an error. E.g., systems with 2 slots must
 # have 2 working power supplies installed.
 #
 
@@ -33,8 +33,8 @@ ipmitool -U$user -LUSER -P$pass -H$host sdr 2>/dev/null | \
                  print "UNKNOWN no data"; exit (3)
              }
              if (status==1) {
-                 print "Powersupply WARNING"; exit (1)
+                 print "Power supply WARNING"; exit (1)
              } else {
-                 print "Powersupply OK"; exit (0)
+                 print "Power supply OK"; exit (0)
              }
          }'
