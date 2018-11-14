@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# Nagios plugin -- check powersupply state via SNMP
+# Nagios plugin -- check power supply state via SNMP
 #
 # Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
 #
