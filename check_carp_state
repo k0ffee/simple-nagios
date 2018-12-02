@@ -22,7 +22,7 @@ set -eu
 promises=($@)
 message=()
 
-[[ -z $promises[*] ]] && print 'UNKNOWN' && exit 3
+[[ -z $promises[*] ]] && print 'UNKNOWN promises' && exit 3
 
 ifconfig -a 2>/dev/null | while read line; do
     #

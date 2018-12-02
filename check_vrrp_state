@@ -33,7 +33,7 @@ message=()
 
 statefile=/var/run/keepalived.state
 
-[[ -z $promises[*] ]] && print 'UNKNOWN' && exit 3
+[[ -z $promises[*] ]] && print 'UNKNOWN promises' && exit 3
 [[ -f $statefile && -r $statefile ]] || { print 'UNKNOWN statefile' && exit 3 }
 
 pgrep -x keepalived 1>/dev/null || print 'WARNING stale data' && exit 1
