@@ -31,14 +31,13 @@ set -eu
 promises=($@)
 message=()
 
-statefile=/var/run/keepalived.state
+statefile=/var/run/keepalived-state
 
 [[ -z $promises[*] ]] && print 'UNKNOWN promises' && exit 3
-[[ -f $statefile && -r $statefile ]] || { print 'UNKNOWN statefile' && exit 3 }
 
 pgrep -x keepalived 1>/dev/null || print 'WARNING stale data' && exit 1
 
-sort -- "$statefile" | while read line; do
+sort -- "$statefile"* 2>/dev/null | while read line; do
     #
     # Assuming state file lines and fields to be like:
     #     INTERFACE lb1_active_ipv4 MASTER
