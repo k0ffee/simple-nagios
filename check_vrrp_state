@@ -9,7 +9,7 @@
 #
 #   Field 1 INSTANCE or GROUP type (vrrp_instance, vrrp_sync_group)
 #   Field 2 name of the vrrp_instance or vrrp_sync_group
-#   Field 3 MASTER, BACKUP, FAULT, or STOP state 
+#   Field 3 MASTER, BACKUP, FAULT, or STOP state
 #
 # Usage:
 #

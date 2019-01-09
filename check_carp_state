@@ -27,7 +27,7 @@ message=()
 ifconfig -a 2>/dev/null | while read line; do
     #
     # Assuming ifconfig(8) lines and fields to be like:
-    #     carp: BACKUP vhid 4 advbase 1 advskew 200  
+    #     carp: BACKUP vhid 4 advbase 1 advskew 200
     #
     case ${line%% *} in (carp:)             # 1st field
         case ${${line#* * }%% *} in (vhid)  # 3rd field

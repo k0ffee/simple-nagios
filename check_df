@@ -35,5 +35,5 @@ df -t zfs 2>/dev/null | \
                  print "WARNING max:"max"% w:"w"% c:"c"%"; exit (1)
              } else {
                  print "OK max:"max"% w:"w"% c:"c"%"; exit (0)
-             } 
+             }
          }'

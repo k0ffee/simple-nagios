@@ -46,7 +46,7 @@ case "$uname" in
     Linux)
 
         flags="up"
-    
+
         if cd /proc/net/bonding; then
             ls | grep . >/dev/null && \
                 awk -vstate=0 -vflags="$flags" \
