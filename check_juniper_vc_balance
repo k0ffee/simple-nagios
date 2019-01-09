@@ -5,6 +5,37 @@
 #
 # Nagios exit codes: 0=OK, 1=Warning, 2=Critical, 3=Unknown
 #
+# From SNMP:
+#     JnxVirtualChassisMemberEntry ::=
+#     SEQUENCE {
+#         jnxVirtualChassisMemberId             INTEGER,
+#         jnxVirtualChassisMemberSerialnumber   DisplayString,
+#         jnxVirtualChassisMemberRole           INTEGER,
+#         jnxVirtualChassisMemberMacAddBase     MacAddress,
+#         jnxVirtualChassisMemberSWVersion      DisplayString ,
+#         jnxVirtualChassisMemberPriority       INTEGER,
+#         jnxVirtualChassisMemberUptime         INTEGER
+#     }
+#
+# Where:
+#     jnxVirtualChassisMemberRole OBJECT-TYPE
+#     SYNTAX INTEGER {
+#                master (1),
+#                backup (2),
+#                linecard (3)
+#            }
+#
+# There is always one master, one backup and many line cards.
+#
+# Usage in this case:
+#
+#     SNMPv2-SMI::enterprises.2636.3.40.1.4.1.1.1.3.0 = INTEGER: 1
+#     SNMPv2-SMI::enterprises.2636.3.40.1.4.1.1.1.3.1 = INTEGER: 3
+#     SNMPv2-SMI::enterprises.2636.3.40.1.4.1.1.1.3.2 = INTEGER: 2
+#     SNMPv2-SMI::enterprises.2636.3.40.1.4.1.1.1.3.3 = INTEGER: 3
+#
+#    ./check_juniper_vc_balance <hostname> 1 3 2 3
+#
 
 PATH=/usr/local/bin:/usr/bin:/bin
 set -e
