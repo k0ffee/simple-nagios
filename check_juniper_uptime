@@ -47,8 +47,8 @@ snmpwalk -c public -v 2c -- $host $oid 2>/dev/null | \
              }
              sub(/ $/, "", message)
              if (wstate==1) {
-                 print "WARNING uptime < " uptime" ("message")"; exit (1)
+                 print "WARNING uptime < " uptime " (" message ")"; exit (1)
              } else {
-                 print "OK uptime > " uptime" ("message")"; exit (0)
+                 print "OK uptime > " uptime " (" message ")"; exit (0)
              }
          }'
