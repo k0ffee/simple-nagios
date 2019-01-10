@@ -71,7 +71,7 @@ snmpwalk -c public -v 2c -- $host $oid 2>/dev/null | \
              }
              if (wstate==1) {
                  print "WARNING VC balance " r1, r2, r3, r4 \
-                         ", expecting " n1, n2 ,n3 ,n4; exit (1)
+                           ", expecting " n1, n2 ,n3 ,n4; exit (1)
              } else {
                  print "OK VC node order " n1, n2, n3, n4; exit (0)
              }
