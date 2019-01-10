@@ -18,7 +18,7 @@ critical=$2
 
 status=0
 df -t zfs 2>/dev/null | \
-    awk -vw=$warning -vc=$critical \
+    awk -v w=$warning -v c=$critical \
         'BEGIN {max=0}
          { p = $5*1 }
          { if (p>=w)  { wstate=1 } }

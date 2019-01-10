@@ -19,7 +19,7 @@ critical=$3
 [ $warning -gt $critical ] && echo UNKNOWN && exit 3
 
 snmpwalk -c public -v 2c -- $host 1.3.6.1.4.1.2636.3.1.13.1.7.7 2>/dev/null | \
-    awk -vw=$warning -vc=$critical \
+    awk -v w=$warning -v c=$critical \
         'BEGIN {max=0} {t=$4*1}
          { if (t>=w) { wstate=1 }}
          { if (t>=c) { cstate=1 }}
