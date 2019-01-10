@@ -11,7 +11,7 @@ set -u
 
 ports=(7000 7001 7002)
 masters_port=7000
-slaves_per_master=2
+backups_per_master=2
 
 #
 # Emit Nagios return codes:
@@ -41,14 +41,14 @@ for port in $ports; do
 done
 
 #
-# This tests if each master has the desired number of slaves attached.
+# This tests if each master has the desired number of backups attached.
 #
 for port in $ports; do
     redis-cli -p $port cluster nodes 2>/dev/null | \
         awk '$3~/^(myself,)?master$/{print$1}' | \
             while read line; do
                 redis-cli -p $port cluster nodes 2>/dev/null | \
-                    awk -vl=$line -vs=$slaves_per_master \
+                    awk -vl=$line -vs=$backups_per_master \
                         '{if ($4==l && $8=="connected") {n+=1}}
                             END{if (n!=s) {exit(1)}}' && \
                                 balance=$e_ok || {balance=$e_warning && break}
@@ -56,7 +56,7 @@ for port in $ports; do
 done
 
 #
-# This tests if masters and their slaves are running on different
+# This tests if masters and their backups are running on different
 # hosts, just for the sake of redundancy at host-level.
 #
 for port in $ports; do
@@ -72,28 +72,28 @@ for port in $ports; do
 done
 
 if   [[ $state -eq 0 && $balance -eq 0 && $distribution -eq 0 ]]; then
-    print -n "OK all masters on $masters_port and $slaves_per_master"
-    print " slaves per master"
+    print -n "OK all masters on $masters_port and $backups_per_master"
+    print " backups per master"
     exit $e_ok
 elif [[ $state -eq 1 && $balance -eq 0 && $distribution -eq 0 ]]; then
     print "WARNING masters not on $masters_port"
     exit $e_warning
 elif [[ $state -eq 0 && $balance -eq 1 ]]; then
-    print "WARNING not $slaves_per_master slaves per master"
+    print "WARNING not $backups_per_master backups per master"
     exit $e_warning
 elif [[ $state -eq 1 && $balance -eq 1 ]]; then
-    print "WARNING masters not on $masters_port and unbalanced slaves"
+    print "WARNING masters not on $masters_port and unbalanced backups"
     exit $e_warning
 elif [[ $state -eq 0 && $balance -eq 0 && $distribution -eq 1 ]]; then
-    print "WARNING master or slaves on same host"
+    print "WARNING master or backups on same host"
     exit $e_warning
 elif [[ $state -eq 1 && $balance -eq 0 && $distribution -eq 1 ]]; then
     print -n "WARNING masters not on $masters_port and"
-    print " master or slaves on same host"
+    print " master or backups on same host"
     exit $e_warning
 elif [[ $state -eq 1 && $balance -eq 1 && $distribution -eq 1 ]]; then
-    print -n "WARNING masters not on $masters_port and unbalanced slaves"
-    print " and master or slaves on same host"
+    print -n "WARNING masters not on $masters_port and unbalanced backups"
+    print " and master or backups on same host"
     exit $e_warning
 else
     print "UNKNOWN"
